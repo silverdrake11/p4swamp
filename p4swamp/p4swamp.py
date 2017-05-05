@@ -29,6 +29,9 @@ import subprocess
 import sys
 
 
+USER_KWARGS = ('spec', 'binary')
+
+
 class P4Error(Exception):
     pass
 
@@ -49,38 +52,59 @@ def _convert_to_binary(spec_dict):
 
 def _parse_spec(kwargs):
     '''
-    Checks the kwargs dictionary for the spec argument. This is required for 
-    Python 2 compatibility as Python 2 will not allow a single keyword argument 
-    if *args is passed in. Also makes sure that thespec argument itself is a 
-    dictionary. If running Python 3 the dictionary must be converted to binary
-    format because the p4 -G option requires it.
+    Makes sure that the spec argument is a dictionary. If running Python 3 
+    the dictionary must be converted to binary format because the p4 -G option 
+    requires it.
     '''
     spec = None
-    num_kwargs = len(kwargs.keys())
-    if num_kwargs > 0:
-        if num_kwargs == 1 and 'spec' in kwargs:
-            spec = kwargs['spec']
-            if not isinstance(spec, dict):
-                raise TypeError("'spec' must be a dictionary!")
-        else:
-            raise TypeError("'spec' is the only keyword arguments accepted!")
-    if sys.version_info[0] >= 3:
-        spec = _convert_to_binary(spec)
+    if 'spec' in kwargs:
+        spec = kwargs['spec']
+        if not isinstance(spec, dict):
+            raise TypeError("'spec' must be a dictionary!")
+        if sys.version_info[0] >= 3:
+            spec = _convert_to_binary(spec)
     return spec
 
     
-def _convert_to_utf8(data_dict):
+def _parse_bin_arg(kwargs):
+    '''
+    Returns the value if 'binary' argument is found, otherwise returns 
+    false. Throws an error if the argument is not a boolean.
+    '''
+    if 'binary' in kwargs:
+        binary_arg = kwargs['binary']
+        if not isinstance(binary_arg, bool):
+            raise TypeError("'binary' input argument must be of type bool!")
+        return binary_arg
+    else:
+        return False
+        
+        
+def _check_kwargs(kwargs):
+    '''
+    Checks the kwargs dictionary for the correct arguments. This is required for 
+    Python 2 compatibility as Python 2 will not allow a single keyword argument 
+    if *args is passed in.
+    '''
+    for key in kwargs:
+        if key not in USER_KWARGS:
+            raise ValueError("The argument specified '" + key + "' is not valid!")
+
+    
+def _convert_to_utf8(data_dict, binary=False):
     item = {}
     for k, v in data_dict.items():
         k = str(k, 'utf8')
-        try:
-            item[k] = str(v, 'utf8', errors='ignore')
-        except TypeError: # e.g. if v is an integer
-            item[k] = str(v)
+        if not binary:
+            try:
+                v = str(v, 'utf8', errors='ignore')
+            except TypeError: # e.g. if v is an integer
+                v = str(v)
+        item[k] = v
     return item
     
     
-def p4swamp(*commands, **spec_input):
+def p4swamp(*commands, **kwarg_input):
     '''
     It's a little bit tricky working with the p4 -G option. More information is
     available in the links below.
@@ -88,18 +112,21 @@ def p4swamp(*commands, **spec_input):
     http://stackoverflow.com/a/33482438/1890801
     http://stackoverflow.com/a/28770814/1890801
     '''
-        
-    commands = ['p4', '-G'] + list(commands) # The -G option tells perforce to give us the marshalled object instead of a string
+            
+    _check_kwargs(kwarg_input)        
+    binary = _parse_bin_arg(kwarg_input) # User argument specifying whether p4 output should be left in binary or converted to str
+    spec = _parse_spec(kwarg_input) # Note in Python 3 spec must be converted binary format!
     
     proc_kwargs = {}
     proc_kwargs['stdout'] = subprocess.PIPE
-    
-    spec = _parse_spec(spec_input) # Note in Python 3 spec must be converted binary format!
+        
     if spec is not None:
         read, write = os.pipe()
         os.write(write, marshal.dumps(spec, 0)) # We need to specify the marshal version for encoding
         os.close(write)
         proc_kwargs['stdin'] = read
+            
+    commands = ['p4', '-G'] + list(commands) # The -G option tells perforce to give us the marshalled object instead of a string
 
     proc = subprocess.Popen(commands, **proc_kwargs)
             
@@ -112,7 +139,7 @@ def p4swamp(*commands, **spec_input):
             record = marshal.load(pipe)
             
             if sys.version_info[0] >= 3: # The output perforce gives is bytes which is not the default used in Python 3
-                record = _convert_to_utf8(record)
+                record = _convert_to_utf8(record, binary=binary)
                 
             data.append(record)
             
@@ -126,6 +153,10 @@ def p4swamp(*commands, **spec_input):
     
     
 def p4(*commands, **kwargs):
+    '''
+    Runs the p4 command/s and if there is an error throws an exception. If there
+    is a warning, prints it.
+    '''
         
     data = p4swamp(*commands, **kwargs)
             
@@ -135,7 +166,7 @@ def p4(*commands, **kwargs):
             if status['code'] == 'error': # Throw an exception if a perforce error occurs
                 print('')
                 for command in commands:
-                    print(command + ' ', end='')
+                    sys.stdout.write(command + ' ')
                 print('\n')
                 raise P4Error(status['data'])
             if status['code'] == 'warn': # Print warning if it occurs
