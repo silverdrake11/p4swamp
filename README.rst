@@ -3,7 +3,9 @@ p4swamp
 ************
 
 p4swamp is a wrapper for the Perforce command-line utility (p4). It does does not require external dependencies (pure Python). The module takes as input p4 commands (see `P4 Documentation`_ for complete list and usage) and outputs a list of Python dictionary objects. In addition specifying a workspace is supported.
-
+   
+.. image:: https://img.shields.io/badge/source-GitHub-green.svg?maxAge=3600&style=flat-square
+    :target: https://github.com/silverdrake11/p4swamp
 
 Requirements
 -------------

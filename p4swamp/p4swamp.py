@@ -36,20 +36,31 @@ class P4Error(Exception):
     pass
 
     
-def _convert_to_binary(spec_dict):
-    bin_dict = {}
-    for k, v in spec_dict.items():
-        try:
-            k = str.encode(k)
-        except TypeError:
-            pass
-        try:
-            bin_dict[k] = str.encode(v, errors='ignore')
-        except TypeError:
-            bin_dict[k] = v
-    return bin_dict
-    
+ def _check_kwargs(kwargs):
+    '''
+    Checks the kwargs dictionary for the correct arguments. This is required for 
+    Python 2 compatibility as Python 2 will not allow a single keyword argument 
+    if *args is passed in.
+    '''
+    for key in kwargs:
+        if key not in USER_KWARGS:
+            raise ValueError("The argument specified '" + key + "' is not valid!")
 
+            
+def _parse_bin_arg(kwargs):
+    '''
+    Returns the value if 'binary' argument is found, otherwise returns 
+    false. Throws an error if the argument is not a boolean.
+    '''
+    if 'binary' in kwargs:
+        binary_arg = kwargs['binary']
+        if not isinstance(binary_arg, bool):
+            raise TypeError("'binary' input argument must be of type bool!")
+        return binary_arg
+    else:
+        return False    
+    
+    
 def _parse_spec(kwargs):
     '''
     Makes sure that the spec argument is a dictionary. If running Python 3 
@@ -64,34 +75,27 @@ def _parse_spec(kwargs):
         if sys.version_info[0] >= 3:
             spec = _convert_to_binary(spec)
     return spec
-
     
-def _parse_bin_arg(kwargs):
-    '''
-    Returns the value if 'binary' argument is found, otherwise returns 
-    false. Throws an error if the argument is not a boolean.
-    '''
-    if 'binary' in kwargs:
-        binary_arg = kwargs['binary']
-        if not isinstance(binary_arg, bool):
-            raise TypeError("'binary' input argument must be of type bool!")
-        return binary_arg
-    else:
-        return False
-        
-        
-def _check_kwargs(kwargs):
-    '''
-    Checks the kwargs dictionary for the correct arguments. This is required for 
-    Python 2 compatibility as Python 2 will not allow a single keyword argument 
-    if *args is passed in.
-    '''
-    for key in kwargs:
-        if key not in USER_KWARGS:
-            raise ValueError("The argument specified '" + key + "' is not valid!")
+    
+def _convert_to_binary(spec_dict):
+    bin_dict = {}
+    for k, v in spec_dict.items():
+        try:
+            k = str.encode(k)
+        except TypeError:
+            pass
+        try:
+            bin_dict[k] = str.encode(v, errors='ignore')
+        except TypeError:
+            bin_dict[k] = v
+    return bin_dict
 
     
 def _convert_to_utf8(data_dict, binary=False):
+    '''
+    Convert keys and values to unicode. If binary is flagged then only keys are
+    converted.
+    '''
     item = {}
     for k, v in data_dict.items():
         k = str(k, 'utf8')

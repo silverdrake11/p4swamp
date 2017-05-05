@@ -6,7 +6,6 @@ setup(name='p4swamp',
         description='A pure Python wrapper for the Perforce command-line client',
         url='https://github.com/silverdrake11/p4swamp',
         author='Kevin Nasto',
-        author_email='kevinnasto@gmail.com',
         license='MIT',
         keywords='p4 perforce marshal minimal pure',
         classifiers=[
