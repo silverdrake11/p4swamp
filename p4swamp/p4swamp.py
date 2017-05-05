@@ -36,7 +36,7 @@ class P4Error(Exception):
     pass
 
     
- def _check_kwargs(kwargs):
+def _check_kwargs(kwargs):
     '''
     Checks the kwargs dictionary for the correct arguments. This is required for 
     Python 2 compatibility as Python 2 will not allow a single keyword argument 

@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(name='p4swamp',
         packages=['p4swamp'],
-        version='0.2',
+        version='0.3',
         description='A pure Python wrapper for the Perforce command-line client',
         url='https://github.com/silverdrake11/p4swamp',
         author='Kevin Nasto',
